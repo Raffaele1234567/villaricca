@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- === TAG ANTI-CACHE === -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <title>Gestione Appuntamenti</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icona.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1976d2">
+
+    <style>
+        body { 
+          margin: 0; padding: 0; height: 100vh; 
+          display: flex; justify-content: center; align-items: center; 
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+          background: #f4f6f8; 
+        }
+        
+        /* SCHERMATA DI CARICAMENTO */
+        #loader-box { text-align: center; display: none; }
+        .spinner { 
+          border: 4px solid #f3f3f3; border-top: 4px solid #1976d2; 
+          border-radius: 50%; width: 45px; height: 45px; 
+          animation: spin 1s linear infinite; margin: 0 auto 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .testo-blu { color: #1976d2; font-weight: bold; font-size: 16px; }
+
+        /* SCHERMATA DI INSTALLAZIONE FISSA */
+        #install-box {
+          display: none;
+          background: white;
+          padding: 30px 20px;
+          border-radius: 16px;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+          text-align: center;
+          max-width: 320px;
+          width: 90%;
+        }
+        #install-box h2 { margin-top: 0; color: #333; }
+        #install-box p { color: #666; font-size: 15px; margin-bottom: 25px; line-height: 1.4; }
+        
+        .btn-installa {
+          background: #1976d2; color: white; border: none; padding: 14px 24px;
+          border-radius: 8px; font-size: 16px; font-weight: bold; width: 100%;
+          cursor: pointer; display: none; margin-bottom: 15px;
+          box-shadow: 0 4px 6px rgba(25, 118, 210, 0.3);
+        }
+        .btn-installa:active { background: #1565c0; }
+        
+        .btn-ignora {
+          background: transparent; color: #1976d2; border: 1px solid #1976d2;
+          padding: 10px 20px; border-radius: 8px; font-size: 14px; width: 100%;
+          cursor: pointer; font-weight: bold;
+        }
+
+        /* ISTRUZIONI SPECIFICHE PER IPHONE */
+        #ios-instructions {
+          display: none;
+          background: #f8f9fa; border: 1px solid #e9ecef;
+          padding: 15px; border-radius: 8px; margin-bottom: 20px;
+          text-align: left; font-size: 13px; color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SCHERMATA DI CARICAMENTO (Visibile se l'app è già installata) -->
+    <div id="loader-box">
+        <div class="spinner"></div>
+        <p class="testo-blu" id="stato-testo">Apertura in corso...</p>
+    </div>
+
+    <!-- SCHERMATA DI INSTALLAZIONE (Visibile se si apre dal browser) -->
+    <div id="install-box">
+        <h2>📱 App Consulenti</h2>
+        <p>Installa l'applicazione sul tuo dispositivo per accedere all'Agenda in modo rapido e sicuro.</p>
+        
+        <!-- Bottone automatico per Android/Chrome -->
+        <button id="btn-installa" class="btn-installa">📥 Installa App Ora</button>
+        
+        <!-- Istruzioni manuali per iPhone/Safari -->
+        <div id="ios-instructions">
+          <strong>Su iPhone o iPad:</strong><br><br>
+          1. Tocca l'icona <strong>Condividi</strong> (il quadrato con la freccia in basso).<br><br>
+          2. Scorri in basso e seleziona <strong>"Aggiungi a schermata Home"</strong> ➕.
+        </div>
+
+        <button class="btn-ignora" onclick="eseguiRedirect()">Continua sul Web ➔</button>
+    </div>
+
+    <script>
+
+
+        
+      // IL TUO LINK UFFICIALE
+      const GOOGLE_APP_URL = "https://script.google.com/macros/s/AKfycbw1hhXCdZ3tPSD-I2BMSL6rSu85jEPXrMU_79B0wxB_pioRYvStpUjazFFXpxY2f_kw/exec";
+      let deferredPrompt;
+
+      // FUNZIONE DI REDIRECT
+      function eseguiRedirect() {
+        document.getElementById('install-box').style.display = 'none';
+        document.getElementById('loader-box').style.display = 'block';
+        window.location.replace(GOOGLE_APP_URL);
+      }
+
+      window.addEventListener('load', () => {
+        // Registrazione del Service Worker
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('sw.js').catch(err => console.warn(err));
+        }
+
+        // CONTROLLO: L'APP È GIÀ INSTALLATA E APERTA DALLA HOME?
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+        if (isStandalone) {
+          // Se è già installata, fai sparire la schermata e reindirizza subito!
+          document.getElementById('loader-box').style.display = 'block';
+          setTimeout(eseguiRedirect, 300);
+        } else {
+          // Se NON è installata, ferma tutto e mostra il pannello di installazione
+          document.getElementById('install-box').style.display = 'block';
+
+          // Controllo specifico per mostrare le istruzioni agli utenti iOS (iPhone/iPad)
+          const isIos = /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase()) && !window.MSStream;
+          if (isIos) {
+            document.getElementById('ios-instructions').style.display = 'block';
+          }
+        }
+      });
+
+      // INTERCETTA IL POPUP NATIVO DI ANDROID/CHROME
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Impedisce al popup nativo di apparire e sparire subito
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Mostra il nostro grande bottone blu
+        const btnInstalla = document.getElementById('btn-installa');
+        btnInstalla.style.display = 'block';
+
+        btnInstalla.addEventListener('click', () => {
+          // Mostra il popup nativo solo quando l'utente è pronto e clicca
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+              console.log('App installata con successo!');
+            }
+            deferredPrompt = null;
+          });
+        });
+      });
+
+      // LISTENER: Se l'installazione va a buon fine, reindirizza in automatico
+      window.addEventListener('appinstalled', () => {
+        eseguiRedirect();
+      });
+    </script>
+</body>
+</html>
